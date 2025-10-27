@@ -289,3 +289,50 @@ The `LevelDetector` identifies expertise or proficiency levels in user queries. 
 ### Utility Modules
 - **`similarity.py`**: Contains functions for calculating cosine similarity between embeddings.
 - **`filter_loader.py`**: Handles loading and preprocessing of filter data from JSON files.
+
+## Step 14: Test Case
+
+```json
+{
+    "confidence": {
+        "domain-speciality": {
+            "Signalling": 1.0
+        }
+    },
+    "detectedLanguage": "French",
+    "detectedLevels": {
+        "experience": "Confirmed",
+        "tool-expertise": "advanced"
+    },
+    "isTranslated": "true",
+    "levelConfidence": {
+        "experience": 0.9,
+        "tool-expertise": 1.0
+    },
+    "levelReasoning": "ERTMS is a European railway control system, suggesting the engineer has experience with railway systems and is likely Confirmed or Seniors. The mention of 'expert' in ERTMS implies advanced tool-expertise.",
+    "originalQuery": "Ingénieur ferroviaire confirmé avec ERTMS",
+    "processingTime": "168.38s",
+    "reasoning": {
+        "domain-speciality": {
+            "Signalling": "High confidence due to explicit mention of ERTMS in the query."
+        }
+    },
+    "reducedFilters": {
+        "domain-speciality": {
+            "Signalling": {
+                "ERTMS": [
+                    0.757
+                ]
+            }
+        }
+    },
+    "stages": {
+        "embedding_search": "1.53s",
+        "level_detection": "38.98s",
+        "llm_refinement": "118.01s",
+        "translation": "9.86s"
+    },
+    "translatedQuery": "Engineer confirmed with ERTMS",
+    "translationConfidence": "0.9"
+}
+```
