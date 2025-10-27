@@ -1,0 +1,22 @@
+
+class Config:
+    # Ollama Configuration
+    OLLAMA_URL = 'http://localhost:11434'
+    OLLAMA_EMBEDDING_MODEL = 'nomic-embed-text'
+    OLLAMA_LLM_MODEL = 'llama3.2:latest'
+
+    # Flask Configuration
+    FLASK_PORT = 8000
+    FLASK_DEBUG = True
+
+    # Application Configuration
+    MAX_FILTERS_PER_CATEGORY = 3
+    MIN_CONFIDENCE_THRESHOLD = 0.8
+    TOP_K_SIMILARITY = 10
+    EMBEDDING_DIMENSION = 768
+
+    # File Paths
+    FILTER_CONFIG_PATH = 'data/values_with_context.json'
+    EMBEDDINGS_PATH = 'data/embeddings.json'
+
+config = Config()
