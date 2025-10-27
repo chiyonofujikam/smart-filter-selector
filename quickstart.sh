@@ -1,8 +1,6 @@
 #!/bin/bash
 
-echo "=================================="
 echo "🚀 Smart Filter Selector - Quick Start"
-echo "=================================="
 
 # Check if Ollama is installed
 if ! command -v ollama &> /dev/null; then
@@ -48,7 +46,7 @@ echo "🐍 Setting up Python environment..."
 
 if [ ! -d "venv" ]; then
     echo "   Creating virtual environment..."
-    python3 -m venv venv
+    uv sync
 fi
 
 echo "   Activating virtual environment..."
@@ -56,15 +54,14 @@ source venv/bin/activate
 
 # Install dependencies
 echo "   Installing dependencies..."
-pip install -q --upgrade pip
-pip install -q -r requirements.txt
+uv sync
 
 # Generate embeddings if not exists
 if [ ! -f "data/embeddings.json" ]; then
     echo ""
     echo "📊 Generating embeddings..."
     echo "   This will take 5-10 minutes..."
-    python scripts/generate_embeddings.py
+    uv run scripts/generate_embeddings.py
 else
     echo ""
     echo "✅ Embeddings already exist"
@@ -72,9 +69,6 @@ fi
 
 # Start the application
 echo ""
-echo "=================================="
 echo "🎉 Starting Flask Application..."
-echo "=================================="
-echo ""
 
-python run.py
+uv run run.py
