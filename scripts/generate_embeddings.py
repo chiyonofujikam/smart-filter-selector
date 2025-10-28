@@ -4,6 +4,7 @@ import sys
 import uuid
 
 import chromadb
+from chromadb.config import Settings
 
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -47,7 +48,7 @@ def generate_embeddings():
     logger.info("3️⃣  Initializing ChromaDB client...")
     os.makedirs(config.PERSIST_DIRECTORY, exist_ok=True)
 
-    client = chromadb.PersistentClient(path=config.PERSIST_DIRECTORY)
+    client = chromadb.PersistentClient(path=config.PERSIST_DIRECTORY, settings=Settings(anonymized_telemetry=False))
     collection = client.get_or_create_collection(name=config.EMBEDDINGS_COLLECTION_NAME)
 
     # Generate embeddings

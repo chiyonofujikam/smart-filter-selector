@@ -31,8 +31,6 @@ def create_app():
             logger.info(f"📊 Ollama URL: {config.OLLAMA_URL}")
             logger.info(f"🤖 LLM Model: {config.OLLAMA_LLM_MODEL}")
             logger.info(f"📝 Embedding Model: {config.OLLAMA_EMBEDDING_MODEL}")
-            logger.info(f"🎯 Max Filters per Category: {config.MAX_FILTERS_PER_CATEGORY}")
-            logger.info(f"📈 Min Confidence Threshold: {config.MIN_CONFIDENCE_THRESHOLD}")
             app.startup_done = True
 
     return app

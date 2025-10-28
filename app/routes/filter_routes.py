@@ -1,6 +1,8 @@
 import logging
 
 import chromadb
+from chromadb.config import Settings
+
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
@@ -15,7 +17,7 @@ filter_bp = Blueprint('filter', __name__)
 # Initialize services
 hybrid_selector = HybridFilterSelector()
 ollama_client = OllamaClient()
-client_db = chromadb.PersistentClient(path=config.PERSIST_DIRECTORY)
+client_db = chromadb.PersistentClient(path=config.PERSIST_DIRECTORY, settings=Settings(anonymized_telemetry=False))
 
 @filter_bp.route('/health', methods=['GET'])
 def health_check():

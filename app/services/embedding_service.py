@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 
 import redis
 from chromadb import PersistentClient
+from chromadb.config import Settings
 
 from app.config import config
 from app.services.ollama_client import OllamaClient
@@ -29,7 +30,7 @@ class EmbeddingService:
 
     def _init_chroma(self):
         """Initialize ChromaDB client."""
-        client = PersistentClient(path=config.PERSIST_DIRECTORY)
+        client = PersistentClient(path=config.PERSIST_DIRECTORY, settings=Settings(anonymized_telemetry=False))
         logger.info("✅ Connected to ChromaDB")
         return client
 
