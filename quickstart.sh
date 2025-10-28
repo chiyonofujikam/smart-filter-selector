@@ -33,11 +33,14 @@ else
     echo "   ✅ nomic-embed-text already available"
 fi
 
-if ! ollama list | grep -q "llama3.2:3b"; then
-    echo "   Pulling llama3.2:3b..."
-    ollama pull llama3.2:3b
+if ! ollama list | grep -q "llama3.2:latest"; then
+    echo "   Pulling llama3.2:latest..."
+    # echo "   Creating and Pulling hybrid-filter-selector ..."
+    # ollama create hybrid-filter-selector -f Modelfile #llama3.2:3b
+    ollama pull llama3.2:latest
 else
-    echo "   ✅ llama3.2:3b already available"
+    echo "   ✅ llama3.2:latest already available"
+    # echo "   ✅ hybrid-filter-selector already available"
 fi
 
 # Check Python virtual environment
@@ -50,14 +53,14 @@ if [ ! -d "venv" ]; then
 fi
 
 echo "   Activating virtual environment..."
-source venv/bin/activate
+source .venv/bin/activate
 
 # Install dependencies
 echo "   Installing dependencies..."
 uv sync
 
 # Generate embeddings if not exists
-if [ ! -f "data/embeddings.json" ]; then
+if [ ! -f "data/chroma_db" ]; then
     echo ""
     echo "📊 Generating embeddings..."
     echo "   This will take 5-10 minutes..."

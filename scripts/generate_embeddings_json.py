@@ -1,9 +1,7 @@
+import json
 import logging
 import os
 import sys
-import uuid
-
-import chromadb
 
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -19,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger("generate_embeddings")
 
 def generate_embeddings():
-    """Generate and store embeddings for all filter values in ChromaDB."""
+    """Generate and save embeddings for all filter values."""
 
     logger.info("🔄 Generating Embeddings for Filter Values")
 
@@ -43,42 +41,30 @@ def generate_embeddings():
         logger.error(f"❌ Error loading filters: {e}")
         return
 
-    # Initialize Chroma client
-    logger.info("3️⃣  Initializing ChromaDB client...")
-    os.makedirs(config.PERSIST_DIRECTORY, exist_ok=True)
-
-    client = chromadb.PersistentClient(path=config.PERSIST_DIRECTORY)
-    collection = client.get_or_create_collection(name=config.EMBEDDINGS_COLLECTION_NAME)
-
     # Generate embeddings
-    logger.info(f"4️⃣  Generating embeddings using {config.OLLAMA_EMBEDDING_MODEL}...")
+    logger.info(f"3️⃣  Generating embeddings using {config.OLLAMA_EMBEDDING_MODEL}...")
+    embeddings_data = []
     total = len(flattened_filters)
 
     for idx, (category, subcategory, value) in enumerate(flattened_filters, 1):
+        # Create text for embedding
         name = value.get('name', '')
         description = value.get('description', '')
-        text = description.strip() if description.strip() and description.strip() != '.' else name
+        text = description.strip()
+
+        if not text or text == '.':
+            text = name
 
         try:
+            # Generate embedding
             embedding = ollama_client.generate_embedding(text)
 
-            # Unique ID for each record
-            uid = str(uuid.uuid4())
-
-            # Ensure all metadata values are safe (convert None → "")
-            metadata = {
-                "category": str(category),
-                "subcategory": str(subcategory),
-                "name": str(name),
-                "description": str(description)
-            }
-            # Store in ChromaDB
-            collection.add(
-                ids=[uid],
-                embeddings=[embedding],
-                metadatas=[metadata],
-                documents=[text]
-            )
+            embeddings_data.append({
+                'category': category,
+                'subcategory': subcategory,
+                'value': value,
+                'embedding': embedding
+            })
 
             # Progress indicator
             if idx % 10 == 0 or idx == total:
@@ -89,12 +75,27 @@ def generate_embeddings():
             logger.warning(f"⚠️  Error generating embedding for '{name}': {e}")
             continue
 
-    # Persist and summarize
-    logger.info("✅ Embeddings successfully stored in ChromaDB!")
-    logger.info(f"Total embeddings: {total}")
-    logger.info(f"Database path: {config.PERSIST_DIRECTORY}")
-    logger.info(f"Collection name: {config.EMBEDDINGS_COLLECTION_NAME}")
-    logger.info("🚀 You can now query the embeddings from ChromaDB!")
+    # Save embeddings
+    logger.info(f"4️⃣  Saving embeddings to {config.EMBEDDINGS_PATH}...")
+
+    # Create data directory if it doesn't exist
+    os.makedirs(os.path.dirname(config.EMBEDDINGS_PATH), exist_ok=True)
+
+    try:
+        with open(config.EMBEDDINGS_PATH, 'w', encoding='utf-8') as f:
+            json.dump(embeddings_data, f, ensure_ascii=False, indent=2)
+        logger.info(f"✅ Saved {len(embeddings_data)} embeddings")
+    except Exception as e:
+        logger.error(f"❌ Error saving embeddings: {e}")
+        return
+
+    # Summary
+    logger.info("✅ Embedding Generation Complete!")
+    logger.info(f"Total embeddings: {len(embeddings_data)}")
+    logger.info(f"Categories processed: {len(set(e['category'] for e in embeddings_data))}")
+    logger.info(f"Embedding dimension: {len(embeddings_data[0]['embedding']) if embeddings_data else 'N/A'}")
+    logger.info(f"🚀 You can now start the Flask application!")
+    logger.info("Run: uv run run.py")
 
 if __name__ == '__main__':
     generate_embeddings()

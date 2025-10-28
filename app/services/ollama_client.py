@@ -1,6 +1,9 @@
-import requests
 from typing import List
+
+import requests
+
 from app.config import config
+
 
 class OllamaClient:
     """Client for interacting with Ollama API."""

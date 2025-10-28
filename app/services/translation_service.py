@@ -1,13 +1,16 @@
+import logging
 import re
 import unicodedata
 from typing import Dict
-from langchain.prompts import PromptTemplate
-from langchain.output_parsers import StructuredOutputParser, ResponseSchema
+
 from langchain.llms.ollama import Ollama
+from langchain.output_parsers import ResponseSchema, StructuredOutputParser
+from langchain.prompts import PromptTemplate
+from langdetect import DetectorFactory, detect
+
 from app.config import config
-import logging
-from langdetect import detect, DetectorFactory
-DetectorFactory.seed = 0  # stable results
+
+DetectorFactory.seed = 0
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +91,7 @@ class TranslationService:
                 'detectedLanguage': 'English',
                 'translatedQuery': query,
                 'originalQuery': query,
-                'confidence': 0.95,
+                'confidence': 1.0,
                 'isTranslated': False
             }
 
@@ -98,17 +101,13 @@ class TranslationService:
             return result
         except Exception as e:
             logger.error(f"⚠️ Translation error: {e}")
-            return self._fallback_translation(query)
-
-    def _fallback_translation(self, query: str) -> Dict[str, any]:
-        """Basic fallback if LLM translation fails."""
-        return {
-            'detectedLanguage': 'Unknown',
-            'translatedQuery': query,
-            'originalQuery': query,
-            'confidence': 0.5,
-            'isTranslated': False
-        }
+            return {
+                'detectedLanguage': 'Unknown',
+                'translatedQuery': query,
+                'originalQuery': query,
+                'confidence': 0.0,
+                'isTranslated': False
+            }
 
     def _is_likely_english(self, query: str) -> bool:
         try:

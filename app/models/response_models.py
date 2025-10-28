@@ -1,5 +1,7 @@
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from typing import Dict, List, Any, Optional
+
 
 class FilterResponse(BaseModel):
     originalQuery: str = Field(..., description="Original user query (in any language)")

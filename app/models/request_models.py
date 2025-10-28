@@ -1,6 +1,9 @@
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from pydantic import BaseModel, Field
+
 from app.config import config
+
 
 class FilterQueryOptions(BaseModel):
     maxFiltersPerCategory: Optional[int] = Field(

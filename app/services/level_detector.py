@@ -1,10 +1,13 @@
 import json
 import os
-from typing import Dict, List, Any
-from langchain.prompts import PromptTemplate
-from langchain.output_parsers import StructuredOutputParser, ResponseSchema
+from typing import Any, Dict, List
+
 from langchain.llms.ollama import Ollama
+from langchain.output_parsers import ResponseSchema, StructuredOutputParser
+from langchain.prompts import PromptTemplate
+
 from app.config import config
+
 
 class LevelDetector:
     """Service for detecting expertise/proficiency levels from query."""

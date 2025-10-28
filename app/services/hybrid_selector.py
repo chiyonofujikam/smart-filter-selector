@@ -1,13 +1,12 @@
+import logging
 from time import perf_counter
-from typing import Dict, Any
-from app.services.embedding_service import EmbeddingService
-from app.services.llm_service import LLMService
-from app.services.level_detector import LevelDetector
-from app.services.translation_service import TranslationService
-
+from typing import Any, Dict
 
 from app.config import config
-import logging
+from app.services.embedding_service import EmbeddingService
+from app.services.level_detector import LevelDetector
+from app.services.llm_service import LLMService
+from app.services.translation_service import TranslationService
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +66,7 @@ class HybridFilterSelector:
         # Stage 1: Embedding-based filtering (get top 30 candidates)
         logger.info(f"📊 Stage 1: Embedding similarity search (top {config.TOP_K_SIMILARITY} candidates)...")
         stage1_start = perf_counter()
-        candidates = self.embedding_service.find_similar_filters(translated_query, config.TOP_K_SIMILARITY)
+        candidates = self.embedding_service.find_similar_filters(translated_query)
         stage1_time = perf_counter() - stage1_start
         logger.info(f"   ✅ Found candidates in {stage1_time:.2f}s")
 

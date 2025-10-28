@@ -1,3 +1,87 @@
+# Intelligent Filter Selection System
+
+This repository contains a Python-based microservice designed to provide intelligent filter recommendations. It leverages embeddings, large language models (LLMs), and hybrid approaches to analyze natural language queries and return optimized subsets of filtering options.
+
+## Project Overview
+
+The system is built to:
+- Analyze user queries using NLP techniques.
+- Generate embeddings for semantic similarity matching.
+- Refine results using LLMs for contextual understanding.
+- Provide structured JSON responses with confidence scores and reasoning.
+
+## Key Components
+
+### 1. **Embedding Service**
+- Generates embeddings for filter values and user queries.
+- Performs similarity matching using cosine similarity.
+
+### 2. **LLM Service**
+- Refines filter candidates using structured prompts.
+- Provides reasoning and confidence scores for selections.
+
+### 3. **Hybrid Filter Selector**
+- Combines embedding-based filtering and LLM-based refinement.
+- Ensures high accuracy and contextual relevance.
+
+### 4. **Translation Service**
+- Detects and translates non-English queries to English.
+- Preserves technical terms and proper nouns.
+
+### 5. **Level Detector**
+- Identifies expertise levels (e.g., beginner, expert) in queries.
+
+## Architecture
+
+The system follows a modular architecture with the following layers:
+- **API Layer**: Exposes RESTful endpoints for client applications.
+- **Service Layer**: Implements core functionalities like embedding generation, LLM refinement, and query analysis.
+- **Data Layer**: Manages embeddings, filter configurations, and caching.
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/ikos-lab/smart-filter-selector.git
+   cd smart-filter-selector
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Set up environment variables in `.env` file (refer to `.env.example`).
+
+4. Start the application:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+## Usage
+
+### Generate Embeddings
+Run the script to generate embeddings for filter values:
+```bash
+python scripts/generate_embeddings.py
+```
+
+### Test the API
+- Health Check:
+  ```bash
+  curl http://localhost:8000/health
+  ```
+- Analyze Query:
+  ```bash
+  curl -X POST http://localhost:8000/api/filter/analyze-query \
+    -H "Content-Type: application/json" \
+    -d '{"query": "railway signaling expert with ERTMS"}'
+  ```
+
+## Explanation
+
+This project is designed to address the challenge of intelligently selecting filters based on user queries. By combining embeddings for fast similarity matching and LLMs for contextual refinement, the system ensures accurate and relevant results. The modular design allows for easy integration and scalability.
+
 # Hybrid Filter Selector - Step-by-Step Implementation Guide
 
 ## Prerequisites
@@ -290,49 +374,127 @@ The `LevelDetector` identifies expertise or proficiency levels in user queries. 
 - **`similarity.py`**: Contains functions for calculating cosine similarity between embeddings.
 - **`filter_loader.py`**: Handles loading and preprocessing of filter data from JSON files.
 
-## Step 14: Test Case
+## Step 14: Redis Setup & Connection Guide
 
-```json
-{
-    "confidence": {
-        "domain-speciality": {
-            "Signalling": 1.0
-        }
-    },
-    "detectedLanguage": "French",
-    "detectedLevels": {
-        "experience": "Confirmed",
-        "tool-expertise": "advanced"
-    },
-    "isTranslated": "true",
-    "levelConfidence": {
-        "experience": 0.9,
-        "tool-expertise": 1.0
-    },
-    "levelReasoning": "ERTMS is a European railway control system, suggesting the engineer has experience with railway systems and is likely Confirmed or Seniors. The mention of 'expert' in ERTMS implies advanced tool-expertise.",
-    "originalQuery": "Ingénieur ferroviaire confirmé avec ERTMS",
-    "processingTime": "168.38s",
-    "reasoning": {
-        "domain-speciality": {
-            "Signalling": "High confidence due to explicit mention of ERTMS in the query."
-        }
-    },
-    "reducedFilters": {
-        "domain-speciality": {
-            "Signalling": {
-                "ERTMS": [
-                    0.757
-                ]
-            }
-        }
-    },
-    "stages": {
-        "embedding_search": "1.53s",
-        "level_detection": "38.98s",
-        "llm_refinement": "118.01s",
-        "translation": "9.86s"
-    },
-    "translatedQuery": "Engineer confirmed with ERTMS",
-    "translationConfidence": "0.9"
-}
+This guide explains how to install, start, and connect to **Redis** for embedding caching in the project.
+
+### 1️⃣ Install Redis
+
+Run the following commands in your terminal:
+
+```bash
+sudo apt update
+sudo apt install redis-server redis-tools -y
 ```
+
+This installs:
+
+* `redis-server`: the Redis database
+* `redis-cli`: the command-line interface to test Redis
+
+---
+
+### 2️⃣ Start and Enable the Redis Service
+
+Start Redis and make sure it runs automatically on boot:
+
+```bash
+sudo systemctl enable redis-server
+sudo systemctl start redis-server
+```
+
+Check that it’s running:
+
+```bash
+sudo systemctl status redis-server
+```
+
+✅ You should see:
+
+```
+Active: active (running)
+```
+
+---
+
+### 3️⃣ Test Redis Connection
+
+Run:
+
+```bash
+redis-cli ping
+```
+
+If Redis is working, it will return:
+
+```
+PONG
+```
+
+---
+
+### 4️⃣ Configure Your App
+
+In your `config.py`, ensure these settings are correct:
+
+```python
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
+REDIS_TTL = 86400  # Cache expiry in seconds (24h)
+```
+
+Your app will automatically connect and log:
+
+```
+✅ Connected to Redis cache
+```
+
+---
+
+### ⚠️ Common Error: "Error 111 connecting to localhost:6379. Connection refused."
+
+If you see this message in your logs:
+
+```
+⚠️ Redis connection failed: Error 111 connecting to localhost:6379. Connection refused.
+```
+
+It means Redis is **not running** or **not reachable**.
+
+#### ✅ Fix:
+
+1. Start Redis:
+
+   ```bash
+   sudo systemctl start redis-server
+   ```
+2. Check its status:
+
+   ```bash
+   sudo systemctl status redis-server
+   ```
+3. Test again:
+
+   ```bash
+   redis-cli ping
+   ```
+
+   You should see `PONG`.
+
+If you’re using Docker instead of a local installation, you can start Redis with:
+
+```bash
+docker run -d --name redis -p 6379:6379 redis:latest
+```
+
+---
+
+### 5️⃣ Verify in Your App
+
+When Redis is running and your app starts, you should see:
+
+```
+✅ Connected to Redis cache
+```
+
+and embedding queries will be cached efficiently.

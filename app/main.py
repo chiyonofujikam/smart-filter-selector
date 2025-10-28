@@ -1,8 +1,11 @@
+import logging
+
 from flask import Flask
 from flask_cors import CORS
-from app.routes.filter_routes import filter_bp
+
 from app.config import config
-import logging
+from app.routes.filter_routes import filter_bp
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"

@@ -1,9 +1,13 @@
-from flask import Blueprint, request, jsonify
 import logging
+
+import chromadb
+from flask import Blueprint, jsonify, request
+from pydantic import ValidationError
+
+from app.config import config
 from app.models.request_models import FilterQueryRequest
 from app.services.hybrid_selector import HybridFilterSelector
 from app.services.ollama_client import OllamaClient
-from pydantic import ValidationError
 
 logger = logging.getLogger("smart-filter-selector")
 filter_bp = Blueprint('filter', __name__)
@@ -11,6 +15,7 @@ filter_bp = Blueprint('filter', __name__)
 # Initialize services
 hybrid_selector = HybridFilterSelector()
 ollama_client = OllamaClient()
+client_db = chromadb.PersistentClient(path=config.PERSIST_DIRECTORY)
 
 @filter_bp.route('/health', methods=['GET'])
 def health_check():
@@ -67,3 +72,19 @@ def test_endpoint():
         'message': 'Filter service is running!',
         'service_ready': hybrid_selector.is_ready()
     })
+
+@filter_bp.route('/api/filter/embeddings', methods=['GET'])
+def list_embeddings():
+    collection = client_db.get_collection(config.EMBEDDINGS_COLLECTION_NAME)
+
+    results = collection.get(include=["metadatas", "embeddings"])
+
+    data = [
+        {
+            "id": i,
+            "metadata": meta,
+            "embeddings": embedding.tolist() if hasattr(embedding, "tolist") else embedding
+        }
+        for i, meta, embedding in zip(results["ids"], results["metadatas"], results["embeddings"])
+    ]
+    return jsonify(data)

@@ -13,10 +13,15 @@ class Config:
     MAX_FILTERS_PER_CATEGORY = 3
     MIN_CONFIDENCE_THRESHOLD = 0.8
     TOP_K_SIMILARITY = 10
-    EMBEDDING_DIMENSION = 768
 
     # File Paths
     FILTER_CONFIG_PATH = 'data/values_with_context.json'
     EMBEDDINGS_PATH = 'data/embeddings.json'
+    PERSIST_DIRECTORY = 'data/chroma_db'
+    EMBEDDINGS_COLLECTION_NAME = "filter_embeddings"
+
+    REDIS_HOST = "localhost"
+    REDIS_PORT = 6379
+    REDIS_TTL = 3600  # 1 hour
 
 config = Config()
