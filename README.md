@@ -94,7 +94,7 @@ smart-filter-selector/
 ## Testing
 Run the API tests:
 ```bash
-uv run test_api.py
+uv run test/test_api.py
 ```
 
 ## Contributing
