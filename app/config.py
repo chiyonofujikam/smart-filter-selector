@@ -2,17 +2,17 @@
 class Config:
     # Ollama Configuration
     OLLAMA_URL = 'http://localhost:11434'
-    OLLAMA_EMBEDDING_MODEL = 'nomic-embed-text'
-    OLLAMA_LLM_MODEL = 'llama3.2:latest'
+    OLLAMA_EMBEDDING_MODEL = 'mxbai-embed-large'
+    OLLAMA_LLM_MODEL = 'llama3.1:8b'
 
     # Flask Configuration
     FLASK_PORT = 8000
     FLASK_DEBUG = True
 
     # Application Configuration
-    MAX_FILTERS_PER_CATEGORY = 3
     MIN_CONFIDENCE_THRESHOLD = 0.8
-    TOP_K_SIMILARITY = 10
+    MIN_CONFIDENCE_THRESHOLD_EMBEDDING = 0.54
+    TOP_K_SIMILARITY = 10 
 
     # File Paths
     FILTER_CONFIG_PATH = 'data/values_with_context.json'
@@ -20,8 +20,5 @@ class Config:
     PERSIST_DIRECTORY = 'data/chroma_db'
     EMBEDDINGS_COLLECTION_NAME = "filter_embeddings"
 
-    REDIS_HOST = "localhost"
-    REDIS_PORT = 6379
-    REDIS_TTL = 3600  # 1 hour
 
 config = Config()

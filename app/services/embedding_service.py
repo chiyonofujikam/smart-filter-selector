@@ -1,17 +1,30 @@
 import json
 import logging
 import os
+import re
+import unicodedata
 from typing import Any, Dict, List
 
-import redis
+import nltk
 from chromadb import PersistentClient
 from chromadb.config import Settings
+from nltk.corpus import stopwords
 
 from app.config import config
 from app.services.ollama_client import OllamaClient
 from app.utils.similarity import cosine_similarity
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 logger = logging.getLogger(__name__)
+
+# Safe auto-download if missing
+try:
+    _ = stopwords.words("english")
+except LookupError:
+    nltk.download("stopwords", quiet=True)
 
 class EmbeddingService:
     """Service for managing embeddings and similarity search."""
@@ -20,7 +33,6 @@ class EmbeddingService:
         self.ollama_client = OllamaClient()
         self.embeddings_cache = {}
         self.filter_embeddings = []
-        self.redis_client = self._init_redis()
         self.chroma_client = self._init_chroma()
         self.load_embeddings()
 
@@ -33,49 +45,6 @@ class EmbeddingService:
         client = PersistentClient(path=config.PERSIST_DIRECTORY, settings=Settings(anonymized_telemetry=False))
         logger.info("✅ Connected to ChromaDB")
         return client
-
-    def _init_redis(self):
-        """Initialize Redis client."""
-        try:
-            client = redis.Redis(
-                host=config.REDIS_HOST,
-                port=config.REDIS_PORT,
-                db=0,
-                decode_responses=True  # Store as string for JSON serialization
-            )
-            client.ping()
-            logger.info("✅ Connected to Redis cache")
-            return client
-        except redis.ConnectionError as e:
-            logger.warning(f"⚠️ Redis connection failed: {e}")
-            return None
-
-    # def load_embeddings(self):
-    #     """Load pre-computed embeddings from file."""
-    #     if os.path.exists(config.EMBEDDINGS_PATH):
-    #         with open(config.EMBEDDINGS_PATH, 'r', encoding='utf-8') as f:
-    #             self.filter_embeddings = json.load(f)
-    #         logger.info(f"✅ Loaded {len(self.filter_embeddings)} pre-computed embeddings")
-    #     else:
-    #         logger.warning(f"⚠️  No embeddings file found at {config.EMBEDDINGS_PATH}")
-    #         logger.warning(f"   Run: python scripts/generate_embeddings.py")
-
-    # def get_query_embedding(self, query: str) -> List[float]:
-    #     """
-    #     Get embedding for query (with caching).
-
-    #     Args:
-    #         query: User query
-
-    #     Returns:
-    #         Embedding vector
-    #     """
-    #     if query in self.embeddings_cache:
-    #         return self.embeddings_cache[query]
-
-    #     embedding = self.ollama_client.generate_embedding(query)
-    #     self.embeddings_cache[query] = embedding
-    #     return embedding
 
     def load_embeddings(self):
         """Load pre-computed embeddings from file."""
@@ -91,10 +60,8 @@ class EmbeddingService:
             {
                 "category": meta.get("category", ""),
                 "subcategory": meta.get("subcategory", ""),
-                "value": {
-                    "name": meta.get("name", ""),
-                    "description": meta.get("description", "")
-                },
+                "name": meta.get("name", ""),
+                "description": meta.get("description", ""),
                 "embedding": embedding
             }
             for meta, embedding in zip(results["metadatas"], results["embeddings"])
@@ -104,82 +71,143 @@ class EmbeddingService:
 
     def get_query_embedding(self, query: str) -> List[float]:
         """
-        Get embedding for query (with Redis caching).
+            Get embedding for query (with caching).
 
-        Args:
-            query: User query
+            Args:
+                query: User query
 
-        Returns:
-            Embedding vector
+            Returns:
+                Embedding vector
         """
-        # 1️⃣ Try Redis cache
-        if self.redis_client:
-            cached = self.redis_client.get(f"embedding:{query}")
-            if cached:
-                logger.debug(f"🧠 Redis hit for query: {query}")
-                return json.loads(cached)
-
-        # 2️⃣ Try in-memory cache (fallback)
         if query in self.embeddings_cache:
-            logger.debug(f"💾 Local cache hit for query: {query}")
             return self.embeddings_cache[query]
 
-        # 3️⃣ Generate new embedding
-        logger.debug(f"🚀 Generating embedding for new query: {query}")
         embedding = self.ollama_client.generate_embedding(query)
-
-        # 4️⃣ Save to both caches
         self.embeddings_cache[query] = embedding
-        if self.redis_client:
-            self.redis_client.setex(
-                f"embedding:{query}",
-                config.REDIS_TTL,
-                json.dumps(embedding)
-            )
-
         return embedding
+
+    def clean_query(self, query: str) -> str:
+        """
+            Clean query by:
+            - Lowercasing
+            - Removing accents and special characters
+            - Removing digits
+            - Removing stopwords (supports English, French, Spanish)
+            - Keeping only significant words
+
+            Args:
+                query: User query
+
+            Returns:
+                Cleaned query string
+        """
+        # Normalize accents (é → e, ñ → n)
+        query = unicodedata.normalize("NFKD", query).encode("ascii", "ignore").decode("utf-8", "ignore")
+
+        # Lowercase & Remove special characters and digits
+        query = re.sub(r"[^a-z\s]", " ", query.lower())
+
+        # Tokenize & Remove stopwords and very short tokens & Join back to string
+        return " ".join(
+            w
+            for w in query.split()
+            if w not in set(stopwords.words("english")) and
+            len(w) > 2
+        )
 
     def find_similar_filters(self, query: str) -> Dict[str, List[Dict]]:
         """
-        Find most similar filters using embedding similarity.
+            Find most similar filters using embedding similarity.
 
-        Args:
-            query: User query
+            Args:
+                query: User query
 
-        Returns:
-            Dictionary with top similar filters per category
+            Returns:
+                Dictionary with top similar filters per category
         """
         if not self.filter_embeddings:
-            logger.warning("⚠️  No embeddings loaded!")
+            logger.warning("⚠️  No embeddings loaded! Run: uv run scripts/generate_embeddings.py")
             return {}
 
         # Get query embedding
+        query = self.clean_query(query)
+        logger.info(f"🔍 Cleaned query for embedding: '{query}'")
         query_embedding = self.get_query_embedding(query)
 
         # Calculate similarities for all filters
-        grouped_results = {}
+        # grouped_results = {}
 
-        for filter_data in self.filter_embeddings:
-            result = {
-                'category': filter_data['category'],
-                'subcategory': filter_data['subcategory'],
-                'value': filter_data['value'],
-                'score': cosine_similarity(
-                    query_embedding,
-                    filter_data['embedding']
-                )
-            }
+        # for filter_data in self.filter_embeddings:
+        #     result = {
+        #         'category': filter_data['category'],
+        #         'subcategory': filter_data['subcategory'],
+        #         # 'value': filter_data['value'],
+        #         'name': filter_data['name'],
+        #         'description': filter_data['description'],
 
-            if result['category'] not in grouped_results:
-                grouped_results[result['category']] = []
-            grouped_results[result['category']].append(result)
+        #         'score': cosine_similarity(
+        #             query_embedding,
+        #             filter_data['embedding']
+        #         )
+        #     }
 
-        # Sort each category by score and take top-K
-        for category in grouped_results:
-            grouped_results[category] = sorted(
-                grouped_results[category],
-                key=lambda x: x['score'],
-                reverse=True
-            )[:config.TOP_K_SIMILARITY]
+        #     if result['category'] not in grouped_results:
+        #         grouped_results[result['category']] = []
+        #     grouped_results[result['category']].append(result)
 
-        return grouped_results
+        # # Sort each category by score and take top-K
+        # for category in grouped_results:
+        #     grouped_results[category] = list(
+        #         filter(
+        #         lambda x: x['score'] >= 0, #config.MIN_CONFIDENCE_THRESHOLD_EMBEDDING,
+        #         sorted(
+        #             grouped_results[category],
+        #             key=lambda x: x['score'],
+        #             reverse=True
+        #         )
+        #         )
+        #     )[:30] #config.TOP_K_SIMILARITY]
+
+        # return grouped_results
+
+        # return list(
+        #     filter(
+        #         lambda x: x['score'] >= 0.54, #config.MIN_CONFIDENCE_THRESHOLD_EMBEDDING,
+        #         sorted(
+        #             list(
+        #                     {
+        #                         'category': filter_data['category'],
+        #                         'subcategory': filter_data['subcategory'],
+        #                         'name': filter_data['name'],
+        #                         'description': filter_data['description'],
+        #                         'score': cosine_similarity(
+        #                             query_embedding,
+        #                             filter_data['embedding']
+        #                         )
+        #                     }
+
+        #                 for filter_data in self.filter_embeddings
+        #             ),
+        #             key=lambda x: x['score'],
+        #             reverse=True
+        #         )
+        #     )
+        # )
+
+        return sorted(
+            list(
+                    {
+                        'category': filter_data['category'],
+                        'subcategory': filter_data['subcategory'],
+                        'name': filter_data['name'],
+                        'score': cosine_similarity(
+                            query_embedding,
+                            filter_data['embedding']
+                        )
+                    }
+
+                for filter_data in self.filter_embeddings
+            ),
+            key=lambda x: x['score'],
+            reverse=True
+        )[:config.TOP_K_SIMILARITY]

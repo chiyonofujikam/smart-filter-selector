@@ -16,5 +16,7 @@ dependencies = [
     "python-dotenv==1.0.0",
     "langdetect>=1.0.9",
     "chromadb>=1.2.2",
-    "redis>=7.0.1",
+    "deep-translator>=1.11.4",
+    "nltk>=3.9.2",
+    "tqdm>=4.67.1",
 ]

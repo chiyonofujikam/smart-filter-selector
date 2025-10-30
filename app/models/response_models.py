@@ -11,7 +11,7 @@ class FilterResponse(BaseModel):
     translationConfidence: float = Field(default=1.0, description="Confidence score for language detection")
 
     query: str = Field(..., description="Query used for processing (translated if needed)")
-    reducedFilters: Dict[str, Any] = Field(..., description="Reduced set of filters per category")
+    reducedFilters: Dict[str, str] = Field(..., description="Reduced set of filters per category (keys: category, subcategory and score)")
     confidence: Dict[str, float] = Field(..., description="Confidence scores per category")
     reasoning: Dict[str, str] = Field(..., description="Reasoning for filter selections")
 

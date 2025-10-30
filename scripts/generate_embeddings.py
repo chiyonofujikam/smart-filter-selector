@@ -5,6 +5,7 @@ import uuid
 
 import chromadb
 from chromadb.config import Settings
+from tqdm import tqdm
 
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -48,43 +49,44 @@ def generate_embeddings():
     logger.info("3️⃣  Initializing ChromaDB client...")
     os.makedirs(config.PERSIST_DIRECTORY, exist_ok=True)
 
-    client = chromadb.PersistentClient(path=config.PERSIST_DIRECTORY, settings=Settings(anonymized_telemetry=False))
+    client = chromadb.PersistentClient(
+        path=config.PERSIST_DIRECTORY,
+        settings=Settings(anonymized_telemetry=False)
+    )
     collection = client.get_or_create_collection(name=config.EMBEDDINGS_COLLECTION_NAME)
 
     # Generate embeddings
     logger.info(f"4️⃣  Generating embeddings using {config.OLLAMA_EMBEDDING_MODEL}...")
-    total = len(flattened_filters)
 
-    for idx, (category, subcategory, value) in enumerate(flattened_filters, 1):
-        name = value.get('name', '')
-        description = value.get('description', '')
-        text = description.strip() if description.strip() and description.strip() != '.' else name
+    for filter_value in tqdm(flattened_filters, desc="Generating Embeddings", total=len(flattened_filters)):
+
+        name = filter_value.get('name', '')
+        description = filter_value.get('description', '').strip()
+        category = filter_value.get('category', '')
+        subcategory = filter_value.get('subcategory', '')
 
         try:
-            embedding = ollama_client.generate_embedding(text)
-
-            # Unique ID for each record
-            uid = str(uuid.uuid4())
+            embedding = ollama_client.generate_embedding(
+                f"Item: {name}"
+                + f"\nCategory: {category}"
+                + (f"\nSubcategory: {subcategory}" if subcategory else "")
+                + f"\nDescription: {description}"
+            )
 
             # Ensure all metadata values are safe (convert None → "")
             metadata = {
-                "category": str(category),
-                "subcategory": str(subcategory),
                 "name": str(name),
-                "description": str(description)
+                "description": str(description),
+                "category": str(category),
+                "subcategory": str(subcategory)
             }
             # Store in ChromaDB
             collection.add(
-                ids=[uid],
+                ids=[str(uuid.uuid4())],
                 embeddings=[embedding],
                 metadatas=[metadata],
-                documents=[text]
+                documents=[description]
             )
-
-            # Progress indicator
-            if idx % 10 == 0 or idx == total:
-                progress = (idx / total) * 100
-                logger.info(f"Progress: {idx}/{total} ({progress:.1f}%) - Last: {name[:50]}")
 
         except Exception as e:
             logger.warning(f"⚠️  Error generating embedding for '{name}': {e}")
@@ -92,7 +94,7 @@ def generate_embeddings():
 
     # Persist and summarize
     logger.info("✅ Embeddings successfully stored in ChromaDB!")
-    logger.info(f"Total embeddings: {total}")
+    logger.info(f"Total embeddings: {len(flattened_filters)}")
     logger.info(f"Database path: {config.PERSIST_DIRECTORY}")
     logger.info(f"Collection name: {config.EMBEDDINGS_COLLECTION_NAME}")
     logger.info("🚀 You can now query the embeddings from ChromaDB!")

@@ -2,7 +2,6 @@ import logging
 
 import chromadb
 from chromadb.config import Settings
-
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
@@ -17,7 +16,10 @@ filter_bp = Blueprint('filter', __name__)
 # Initialize services
 hybrid_selector = HybridFilterSelector()
 ollama_client = OllamaClient()
-client_db = chromadb.PersistentClient(path=config.PERSIST_DIRECTORY, settings=Settings(anonymized_telemetry=False))
+client_db = chromadb.PersistentClient(
+    path=config.PERSIST_DIRECTORY,
+    settings=Settings(anonymized_telemetry=False)
+)
 
 @filter_bp.route('/health', methods=['GET'])
 def health_check():
@@ -49,10 +51,12 @@ def analyze_query():
 
         # Check if service is ready
         if not hybrid_selector.is_ready():
-            return jsonify({
-                'error': 'Service not ready',
-                'message': 'Embeddings not loaded. Please run: python scripts/generate_embeddings.py'
-            }), 503
+            return jsonify(
+                {
+                    'error': 'Service not ready',
+                    'message': 'Embeddings not loaded. Please run: python scripts/generate_embeddings.py'
+                }
+            ), 503
 
         # Process query
         result = hybrid_selector.select_filters(
@@ -77,16 +81,20 @@ def test_endpoint():
 
 @filter_bp.route('/api/filter/embeddings', methods=['GET'])
 def list_embeddings():
-    collection = client_db.get_collection(config.EMBEDDINGS_COLLECTION_NAME)
-
-    results = collection.get(include=["metadatas", "embeddings"])
-
-    data = [
+    data = request.get_json()
+    logger.info(f"🔍 Received request to list embeddings: {data}")
+    # Retrieve embeddings from ChromaDB
+    results = client_db.get_collection(
+        config.EMBEDDINGS_COLLECTION_NAME).get(
+            include=["metadatas", "embeddings"],
+            limit=data.get("limit", 10)
+    )
+    # Return embeddings
+    return jsonify(list(
         {
             "id": i,
             "metadata": meta,
             "embeddings": embedding.tolist() if hasattr(embedding, "tolist") else embedding
         }
         for i, meta, embedding in zip(results["ids"], results["metadatas"], results["embeddings"])
-    ]
-    return jsonify(data)
+    ))

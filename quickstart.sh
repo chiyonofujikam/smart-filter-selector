@@ -26,21 +26,20 @@ echo ""
 echo "📥 Pulling required models..."
 echo "   This may take a few minutes..."
 
-if ! ollama list | grep -q "nomic-embed-text"; then
-    echo "   Pulling nomic-embed-text..."
-    ollama pull nomic-embed-text
+if ! ollama list | grep -q "mxbai-embed-large"; then
+    # echo "   Pulling nomic-embed-text..."
+    # ollama pull nomic-embed-text
+    echo "   Pulling mxbai-embed-large..."
+    ollama pull mxbai-embed-large
 else
-    echo "   ✅ nomic-embed-text already available"
+    echo "   ✅ mxbai-embed-large already available"
 fi
 
-if ! ollama list | grep -q "llama3.2:latest"; then
-    echo "   Pulling llama3.2:latest..."
-    # echo "   Creating and Pulling hybrid-filter-selector ..."
-    # ollama create hybrid-filter-selector -f Modelfile #llama3.2:3b
-    ollama pull llama3.2:latest
+if ! ollama list | grep -q "llama3.1:8b"; then
+    echo "   Pulling llama3.1:8b..."
+    ollama pull llama3.1:8b
 else
-    echo "   ✅ llama3.2:latest already available"
-    # echo "   ✅ hybrid-filter-selector already available"
+    echo "   ✅ llama3.1:8b already available"
 fi
 
 # Check Python virtual environment
@@ -60,7 +59,7 @@ echo "   Installing dependencies..."
 uv sync
 
 # Generate embeddings if not exists
-if [ ! -f "data/chroma_db" ]; then
+if [ ! -d "data/chroma_db" ]; then
     echo ""
     echo "📊 Generating embeddings..."
     echo "   This will take 5-10 minutes..."

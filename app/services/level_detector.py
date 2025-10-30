@@ -1,13 +1,19 @@
 import json
 import os
+import logging
 from typing import Any, Dict, List
 
 from langchain.llms.ollama import Ollama
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from langchain.prompts import PromptTemplate
 
+
+
+
 from app.config import config
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class LevelDetector:
     """Service for detecting expertise/proficiency levels from query."""
@@ -29,7 +35,7 @@ class LevelDetector:
             with open(levels_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"⚠️  Could not load levels.json: {e}")
+            logger.info(f"⚠️  Could not load levels.json: {e}")
             return {
                 "language-level": ["A1", "A2", "B1", "B2", "C1", "C2", "native"],
                 "experience": ["Experts", "Seniors", "Confirmed", "Medium", "Juniors"],
@@ -94,13 +100,13 @@ class LevelDetector:
 
     def detect_levels(self, query: str) -> Dict[str, Any]:
         """
-        Detect levels from user query.
+            Detect levels from user query.
 
-        Args:
-            query: User query
+            Args:
+                query: User query
 
-        Returns:
-            Dictionary with detected levels, confidence, and reasoning
+            Returns:
+                Dictionary with detected levels, confidence, and reasoning
         """
         try:
             levels_str = json.dumps(self.levels_data, indent=2)
@@ -113,7 +119,7 @@ class LevelDetector:
             return result
 
         except Exception as e:
-            print(f"⚠️  Level detection error: {e}")
+            logger.info(f"⚠️  Level detection error: {e}")
             return self._fallback_detection(query)
 
     def _fallback_detection(self, query: str) -> Dict[str, Any]:

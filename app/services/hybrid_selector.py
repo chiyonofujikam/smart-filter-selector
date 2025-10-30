@@ -1,3 +1,4 @@
+import json
 import logging
 from time import perf_counter
 from typing import Any, Dict
@@ -43,7 +44,7 @@ class HybridFilterSelector:
         """
         start_time = perf_counter()
 
-        max_filters = max_filters or config.MAX_FILTERS_PER_CATEGORY
+        max_filters = max_filters or config.TOP_K_SIMILARITY
         min_confidence = min_confidence or config.MIN_CONFIDENCE_THRESHOLD
         logger.info(f"🔍 Received query: '{query}'")
 
@@ -59,7 +60,7 @@ class HybridFilterSelector:
         translation_conf = translation_result.get("confidence", 0.0)
 
         logger.info(
-            f"   ✅ Detected: {detected_language} | Translated: {is_translated} | "
+            f"✅ Detected: {detected_language} | Translated: {is_translated} | "
             f"Confidence: {float(translation_conf):.2f} | Time: {stage0_time:.2f}s"
         )
 
@@ -68,7 +69,10 @@ class HybridFilterSelector:
         stage1_start = perf_counter()
         candidates = self.embedding_service.find_similar_filters(translated_query)
         stage1_time = perf_counter() - stage1_start
-        logger.info(f"   ✅ Found candidates in {stage1_time:.2f}s")
+        logger.info(f"   ✅ Found {len(candidates)} candidates in {stage1_time:.2f}s")
+
+        # with open('./candidates_debug.json', 'w', encoding='utf-8') as f:
+        #     json.dump(candidates, f, ensure_ascii=False, indent=2)
 
         if not candidates:
             return {
@@ -84,21 +88,21 @@ class HybridFilterSelector:
             }
 
         # Stage 2: LLM-based refinement
-        logger.info(f"🤖 Stage 2: LLM refinement (selecting top {max_filters} per category)...")
+        logger.info(f"🤖 Stage 2: LLM refinement ...")
         stage2_start = perf_counter()
-        refined_result = self.llm_service.refine_filters(translated_query, candidates, max_filters)
+        filtered_result = self.llm_service.refine_filters(translated_query, candidates, max_filters)
         stage2_time = perf_counter() - stage2_start
         logger.info(f"   ✅ Refined in {stage2_time:.2f}s")
 
         # Stage 3: Level detection
-        logger.info(f"🎯 Stage 3: Detecting expertise/proficiency levels...")
+        logger.info(f"🎯 Stage 3: Detecting expertise/proficiency/language levels...")
         stage3_start = perf_counter()
         level_result = self.level_detector.detect_levels(translated_query)
         stage3_time = perf_counter() - stage3_start
         logger.info(f"✅ Levels detected in {stage3_time:.2f}s")
 
         # Apply confidence threshold
-        filtered_result = self._apply_confidence_threshold(refined_result, min_confidence)
+        # filtered_result = self._apply_confidence_threshold(filtered_result, min_confidence)
 
         # Calculate metrics
         total_time = perf_counter() - start_time

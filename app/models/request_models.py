@@ -7,7 +7,7 @@ from app.config import config
 
 class FilterQueryOptions(BaseModel):
     maxFiltersPerCategory: Optional[int] = Field(
-        default=config.MAX_FILTERS_PER_CATEGORY,
+        default=config.TOP_K_SIMILARITY,
         description="Maximum number of filters to return per category"
     )
     minConfidence: Optional[float] = Field(
