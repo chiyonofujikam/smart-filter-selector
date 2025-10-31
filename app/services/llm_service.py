@@ -7,6 +7,7 @@ from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from langchain.prompts import PromptTemplate
 
 from app.config import config
+from app.utils.token_count import count_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,8 @@ class LLMService:
                     "  {\n"
                     "    \"name\": \"<filter name>\",\n"
                     "    \"category\": \"<category name>\",\n"
-                    "    \"subcategory\": \"<subcategory name or empty string>\"\n"
+                    "    \"subcategory\": \"<subcategory name or empty string>\",\n"
+                    "    \"score\": \"<score (0-1)>\",\n"
                     "  }, ...\n"
                     "]\n\n"
                     "Each dictionary contains the filter name, category, and subcategory.\n"
@@ -118,6 +120,14 @@ IMPORTANT:
         candidates_str = self._format_candidates(candidates, max_per_category)
 
         try:
+            rendered_prompt = self.prompt.format(
+                query=query,
+                candidates=candidates_str
+            )
+            logger.info(f"📝 LLM Prompt Tokens:{count_tokens(rendered_prompt)}")
+            # with open("./debug_prompt.txt", "w", encoding="utf-8") as f:
+            #     f.write(rendered_prompt)
+
             # Run the chain
             result = self.chain.invoke({
                 "query": query,

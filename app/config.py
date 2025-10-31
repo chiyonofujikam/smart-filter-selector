@@ -12,7 +12,7 @@ class Config:
     # Application Configuration
     MIN_CONFIDENCE_THRESHOLD = 0.8
     MIN_CONFIDENCE_THRESHOLD_EMBEDDING = 0.54
-    TOP_K_SIMILARITY = 10 
+    TOP_K_SIMILARITY = 20
 
     # File Paths
     FILTER_CONFIG_PATH = 'data/values_with_context.json'
