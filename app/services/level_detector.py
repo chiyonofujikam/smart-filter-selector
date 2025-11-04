@@ -1,16 +1,15 @@
 import json
-import os
 import logging
+import os
 from typing import Any, Dict, List
+import re
 
 from langchain.llms.ollama import Ollama
 from langchain.output_parsers import ResponseSchema, StructuredOutputParser
 from langchain.prompts import PromptTemplate
 
-
-
-
 from app.config import config
+from app.utils.token_count import count_tokens
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,19 +43,38 @@ class LevelDetector:
 
     def setup_chain(self):
         """Setup LangChain prompt and output parser for level detection."""
-
         response_schemas = [
             ResponseSchema(
                 name="detectedLevels",
-                description="Dictionary with detected level categories and their values"
+                description=(
+                    "A JSON object mapping each relevant category to one or more detected levels. "
+                    "Categories include: 'experience', 'tool-expertise', and 'language-level'.\n"
+                    "- 'experience' refers to overall professional seniority (e.g., Juniors, Confirmed, Seniors, Experts).\n"
+                    "- 'tool-expertise' refers to mastery of tools, frameworks, or technologies "
+                    "(e.g., basic, intermediate, advanced, expert).\n"
+                    "- 'language-level' refers to linguistic fluency based on CEFR levels or equivalents\n"
+                    "Each category value should be a list of the most probable level(s), even if only one is detected."
+                )
             ),
             ResponseSchema(
                 name="confidence",
-                description="Dictionary with confidence scores (0-1) for each detected level"
+                description=(
+                    "A JSON object containing numeric confidence scores between 0.0 and 1.0 for each category detected "
+                    "(same keys as in 'detectedLevels').\n"
+                    "- Confidence reflects how certain the model is about its inference.\n"
+                    "- Scores closer to 1.0 mean strong evidence; closer to 0.0 mean low certainty.\n"
+                    "Only include scores for categories that appear in 'detectedLevels'."
+                )
             ),
             ResponseSchema(
                 name="reasoning",
-                description="Explanation for why these levels were detected"
+                description=(
+                    "A concise explanation (1–3 sentences) describing how the detected levels were inferred from the query.\n"
+                    "Explain both explicit and implicit clues:\n"
+                    "- Mention key words, phrases, or contextual hints that influenced the decision.\n"
+                    "- If confidence is low, briefly explain the ambiguity or uncertainty.\n"
+                    "Avoid generic statements; focus on reasoning grounded in the query content."
+                )
             )
         ]
 
@@ -64,31 +82,68 @@ class LevelDetector:
         format_instructions = self.output_parser.get_format_instructions()
 
         template = """
-            You are an expert at analyzing job queries to detect expertise and proficiency levels.
-            User Query: "{query}"
+You are an advanced language model specialized in analyzing user job or task queries to infer their expertise and proficiency levels.
 
-            Available level categories:
-            {levels}
+User Query:
+"{query}"
 
-            Your task:
-            1. Analyze the query for explicit or implicit level indicators
-            2. Detect which level categories are relevant (experience, tool-expertise, language-level)
-            3. For each relevant category, select the most appropriate level(s)
-            4. Provide confidence scores (0-1) for each detection
+Available Level Categories and Their Descriptions:
+{levels}
+---
 
-            Level detection rules:
-            - "expert", "specialist", "senior" → experience: Experts/Seniors
-            - "junior", "beginner" → experience: Juniors
-            - "confirmed", "mid-level" → experience: Confirmed
-            - If query mentions tools with "expert in", "mastery of" → tool-expertise: expert/advanced
-            - If query mentions tools without level indicators → tool-expertise: intermediate
-            - Only detect language-level if languages are explicitly mentioned (e.g., "fluent in French", "native English")
-            - If no level is mentioned, infer from context (e.g., "railway engineer" likely Confirmed or Seniors)
+### Your Task:
+Analyze the query and determine the most likely levels for the following categories:
+- **experience**: overall seniority or years of experience implied
+- **tool-expertise**: mastery of specific tools, frameworks, or technologies
+- **language-level**: linguistic fluency or proficiency (only if languages are explicitly mentioned)
 
-            {format_instructions}
+For each relevant category:
+1. Identify explicit or implicit indicators of skill level or experience.
+2. Select the most appropriate level(s) based on semantic meaning and context.
+3. Assign a confidence score between **0.0 and 1.0**, reflecting how certain your detection is.
+4. Explain your reasoning briefly and logically.
 
-            Return ONLY the JSON output.
-        """
+---
+### Detection Guidelines
+
+When analyzing the query, do not rely only on keywords — reason about meaning and intent.
+Use the following as **illustrative hints**, not strict rules.
+
+- **Experience indicators (overall professional seniority):**
+    Consider job titles, years of experience, and self-descriptions. For example:
+    - Terms suggesting autonomy, leadership, or high specialization → higher levels (Confirmed, Senior, or Expert)
+    - Words showing early-career or learning stages → lower levels (Junior or Medium)
+    - If the query describes responsibilities or achievements requiring experience, infer a higher level even if not stated.
+
+- **Tool expertise indicators (specific technical proficiency):**
+    - Evaluate how confidently the user discusses tools or technologies.
+    - Expressions of mastery, optimization, or customization suggest advanced or expert levels.
+    - Routine or limited experience indicates intermediate.
+    - Unfamiliarity or simple exposure implies basic or limited skill.
+
+- **Language proficiency indicators:**
+    - Only assign a language-level when a language is explicitly referenced.
+    - Look for cues like “fluent”, “native”, “basic knowledge”, or standardized CEFR mentions (A1–C2).
+    - Avoid assuming a language level unless the user clearly mentions it.
+
+- **Inference rules:**
+    - If explicit level clues are absent, infer logically from the role or context (e.g., “team lead” → Senior/Expert, “intern” → Junior).
+    - Prioritize reasoning and contextual understanding over keyword similarity.
+    - Do not assign a level if the evidence is ambiguous or insufficient.
+---
+
+### Output Format
+
+Return **STRICTLY VALID JSON**, following this schema:
+
+{format_instructions}
+
+Important:
+- Output must be a **single valid JSON object**.
+- Do **not** include markdown, explanations, or extra text.
+- Do **not** wrap the JSON in code blocks.
+- Ensure all keys and strings use double quotes `"`.
+- Ensure commas between all fields."""
 
         self.prompt = PromptTemplate(
             template=template,
@@ -110,6 +165,11 @@ class LevelDetector:
         """
         try:
             levels_str = json.dumps(self.levels_data, indent=2)
+            rendered_prompt = self.prompt.format(
+                query=query,
+                levels=levels_str
+            )
+            logger.info(f"📝 LLM Prompt Tokens:{count_tokens(rendered_prompt)}")
 
             result = self.chain.invoke({
                 "query": query,
@@ -120,66 +180,8 @@ class LevelDetector:
 
         except Exception as e:
             logger.info(f"⚠️  Level detection error: {e}")
-            return self._fallback_detection(query)
-
-    def _fallback_detection(self, query: str) -> Dict[str, Any]:
-        """Fallback level detection using keyword matching."""
-        query_lower = query.lower()
-        detected_levels = {}
-        confidence = {}
-        reasoning = {}
-
-        # Experience level detection
-        experience_keywords = {
-            "Experts": ["expert", "specialist", "highly experienced", "senior expert"],
-            "Seniors": ["senior", "experienced", "seasoned"],
-            "Confirmed": ["confirmed", "mid-level", "intermediate experience"],
-            "Medium": ["medium", "moderate"],
-            "Juniors": ["junior", "beginner", "entry-level", "graduate"]
-        }
-
-        for level, keywords in experience_keywords.items():
-            if any(kw in query_lower for kw in keywords):
-                detected_levels["experience"] = [level]
-                confidence["experience"] = 0.7
-                reasoning["experience"] = f"Detected '{level}' from keywords in query"
-                break
-
-        # Tool expertise detection
-        tool_expertise_keywords = {
-            "expert": ["expert in", "mastery of", "proficient in", "skilled in"],
-            "advanced": ["advanced", "extensive experience"],
-            "intermediate": ["experience with", "knowledge of", "familiar with"]
-        }
-
-        for level, keywords in tool_expertise_keywords.items():
-            if any(kw in query_lower for kw in keywords):
-                detected_levels["tool-expertise"] = [level]
-                confidence["tool-expertise"] = 0.6
-                reasoning["tool-expertise"] = f"Inferred '{level}' tool expertise from query context"
-                break
-
-        # Language level detection (only if languages mentioned)
-        language_keywords = ["fluent", "native", "bilingual", "language", "french", "english", "spanish"]
-        if any(kw in query_lower for kw in language_keywords):
-            if "native" in query_lower or "mother tongue" in query_lower:
-                detected_levels["language-level"] = ["native"]
-                confidence["language-level"] = 0.8
-                reasoning["language-level"] = "Native language detected"
-            elif "fluent" in query_lower or "c2" in query_lower:
-                detected_levels["language-level"] = ["C2"]
-                confidence["language-level"] = 0.7
-                reasoning["language-level"] = "Fluent/C2 language level detected"
-
-        # Default: if no experience level detected, infer from job type
-        if "experience" not in detected_levels:
-            if "engineer" in query_lower or "developer" in query_lower:
-                detected_levels["experience"] = ["Confirmed"]
-                confidence["experience"] = 0.5
-                reasoning["experience"] = "Inferred Confirmed level from professional context"
-
-        return {
-            "detectedLevels": detected_levels,
-            "confidence": confidence,
-            "reasoning": reasoning
-        }
+            return {
+                "detectedLevels": {},
+                "confidence": {},
+                "reasoning": {}
+            }

@@ -148,5 +148,82 @@
     "query": "Usamos Capella y SysML para modelar la arquitectura del sistema.",
     "language": "es",
     "expected": ["Capella", "SYSml"]
+  },
+
+
+  {
+    "query": "We are developing a SCADA system for industrial automation.",
+    "language": "en",
+    "expected": ["Automation", "SCADA"]
+  },
+  {
+    "query": "Nous concevons un système de cybersécurité pour les réseaux ferroviaires.",
+    "language": "fr",
+    "expected": ["Cybersecurity", "Railway", "Network"]
+  },
+  {
+    "query": "Estamos implementando sensores IoT para monitorizar la energía solar.",
+    "language": "es",
+    "expected": ["Energy", "Renewable Energie", "IoT"]
+  },
+  {
+    "query": "Stiamo progettando sistemi di segnalamento ferroviario automatici.",
+    "language": "it",
+    "expected": ["Railway", "Signalling", "Automation"]
+  },
+  {
+    "query": "Designing high voltage substations for energy distribution.",
+    "language": "en",
+    "expected": ["Energy", "High Voltage", "Transmission And Distribution"]
+  },
+  {
+    "query": "Le projet inclut la modélisation sous Simulink et MATLAB.",
+    "language": "fr",
+    "expected": ["SIMULINK", "MATLAB"]
+  },
+  {
+    "query": "Estamos usando BIM y LOI MOP para el diseño civil.",
+    "language": "es",
+    "expected": ["BIM", "LOI MOP", "Infrastructure"]
+  },
+  {
+    "query": "Il software segue lo standard EN50128 e il modello a V.",
+    "language": "it",
+    "expected": ["EN50128", "Cycle en V"]
+  },
+  {
+    "query": "We’re testing the safety of railway communication systems.",
+    "language": "en",
+    "expected": ["Railway", "Safety", "Communication"]
+  },
+  {
+    "query": "Le système SCADA contrôle la distribution électrique.",
+    "language": "fr",
+    "expected": ["SCADA", "Energy", "Electrical Systems"]
+  },
+  {
+    "query": "analizando proteccion electrica y media tension",
+    "language": "es",
+    "expected": ["Electrical Protection", "Medium Voltage (MV)", "Energy"]
+  },
+  {
+    "query": "System design: ERTMS, CBTC, or maybe both?",
+    "language": "en",
+    "expected": ["ERTMS", "CBTC", "Signalling"]
+  },
+  {
+    "query": "le dev suit la norme cenelec et la méthode b",
+    "language": "fr",
+    "expected": ["Cenelec", "Méthode B"]
+  },
+  {
+    "query": "stiamo lavorando su catene di trazione elettriche e catenarie.",
+    "language": "it",
+    "expected": ["Traction Systems", "Catenary", "Railway"]
+  },
+  {
+    "query": "not sure something with trains and energy i dont know",
+    "language": "en",
+    "expected": ["Railway", "Energy"]
   }
 ]

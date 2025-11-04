@@ -115,6 +115,7 @@ class HybridFilterSelector:
             'isTranslated': is_translated,
 
             'reducedFilters': filtered_result['reducedFilters'],
+            'embedding_search_candidates': candidates,
             'confidence': filtered_result['confidence'],
             'reasoning': filtered_result['reasoning'],
 

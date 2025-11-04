@@ -60,9 +60,8 @@ uv sync
 
 # Generate embeddings if not exists
 if [ ! -d "data/chroma_db" ]; then
-    echo ""
     echo "📊 Generating embeddings..."
-    echo "   This will take 5-10 minutes..."
+    echo "   This will take 2-3 minutes..."
     uv run scripts/generate_embeddings.py
 else
     echo ""

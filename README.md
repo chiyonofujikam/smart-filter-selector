@@ -14,7 +14,6 @@ The Smart Filter Selector is a Python-based microservice designed to intelligent
 
 ### Prerequisites
 - Python >= 3.11
-- Redis server
 - Ollama server for embeddings and LLMs
 
 ### Setup
@@ -30,15 +29,19 @@ The Smart Filter Selector is a Python-based microservice designed to intelligent
    ```
 
 3. Configure environment variables in `app/config.py`:
-   - Update parameters such as `OLLAMA_URL`, `FLASK_PORT`, and `REDIS_HOST` as needed.
+   - Update parameters such as `OLLAMA_URL` and `FLASK_PORT` as needed.
 
-4. Start Redis and Ollama servers.
+4. Start Ollama servers.
 
 5. Generate embeddings:
    ```bash
    uv run scripts/generate_embeddings.py
    ```
-
+6. Docker
+   ```bash
+   docker build -t smart-filter-selector .
+   docker run --name smart_fs_ms -p 8000:8000 smart-filter-selector 
+   ```
 ## Usage
 
 ### Running the Service
